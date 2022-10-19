@@ -7,5 +7,13 @@ import (
 )
 
 func Initialize(logger *zap.Logger, config *util.Config) {
-	_ = make(chan *kwekker_protobufs.Kwek)
+	kwekChannel := make(chan *kwekker_protobufs.Kwek, 10)
+
+	rabbitMQWorker := NewRabbitMQWorker(logger, &config.RabbitMQ)
+	go rabbitMQWorker.Listen(kwekChannel)
+
+	for {
+		kwek := <-kwekChannel
+		logger.Info("Received kwek", zap.String("kwek", kwek.String()))
+	}
 }

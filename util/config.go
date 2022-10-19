@@ -3,23 +3,23 @@ package util
 import "github.com/spf13/viper"
 
 type Config struct {
-	RabbitMQ rabbitMQConfig `mapstructure:",squash"`
-	Postgres postgresConfig `mapstructure:",squash"`
+	RabbitMQ RabbitMQConfig `mapstructure:",squash"`
+	Postgres PostgresConfig `mapstructure:",squash"`
 }
 
-type rabbitMQConfig struct {
+type RabbitMQConfig struct {
 	Username string `mapstructure:"RABBITMQ_USER"`
 	Password string `mapstructure:"RABBITMQ_PASS"`
 	Host     string `mapstructure:"RABBITMQ_HOST"`
-	Port     string `mapstructure:"RABBITMQ_PORT"`
+	Port     uint16 `mapstructure:"RABBITMQ_PORT"`
 	Vhost    string `mapstructure:"RABBITMQ_VHOST"`
 }
 
-type postgresConfig struct {
+type PostgresConfig struct {
 	Username string `mapstructure:"POSTGRES_USER"`
 	Password string `mapstructure:"POSTGRES_PASSWORD"`
 	Host     string `mapstructure:"POSTGRES_HOST"`
-	Port     string `mapstructure:"POSTGRES_PORT"`
+	Port     uint16 `mapstructure:"POSTGRES_PORT"`
 	Database string `mapstructure:"POSTGRES_DB"`
 }
 

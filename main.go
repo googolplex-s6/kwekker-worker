@@ -10,8 +10,10 @@ func main() {
 	defer logger.Sync()
 	sugaredLogger := logger.Sugar()
 
-	_, err := util.LoadConfig()
+	config, err := util.LoadConfig()
 	if err != nil {
 		sugaredLogger.Fatalln("Unable to load configuration; is the .env file present and valid?", err)
 	}
+
+	Initialize(logger, &config)
 }

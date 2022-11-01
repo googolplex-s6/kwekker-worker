@@ -1,19 +1,27 @@
 package main
 
 import (
-	kwekker_protobufs "github.com/googolplex-s6/kwekker-protobufs/kwek"
+	kwekker_protobufs "github.com/googolplex-s6/kwekker-protobufs/v2/kwek"
 	"go.uber.org/zap"
 	"kwekker-worker/util"
 )
 
-func Initialize(logger *zap.Logger, config *util.Config) {
-	kwekChannel := make(chan *kwekker_protobufs.Kwek, 10)
+func Initialize(logger *zap.SugaredLogger, config *util.Config) {
+	createKwekChannel := make(chan *kwekker_protobufs.CreateKwek)
+	updateKwekChannel := make(chan *kwekker_protobufs.UpdateKwek)
+	deleteKwekChannel := make(chan *kwekker_protobufs.DeleteKwek)
 
 	rabbitMQWorker := NewRabbitMQWorker(logger, &config.RabbitMQ)
-	go rabbitMQWorker.Listen(kwekChannel)
+	go rabbitMQWorker.Listen(createKwekChannel, updateKwekChannel, deleteKwekChannel)
 
 	for {
-		kwek := <-kwekChannel
-		logger.Info("Received kwek", zap.String("kwek", kwek.String()))
+		select {
+		case createKwek := <-createKwekChannel:
+			logger.Info("Received create kwek request", "kwek", createKwek)
+		case updateKwek := <-updateKwekChannel:
+			logger.Info("Received update kwek request", "kwek", updateKwek)
+		case deleteKwek := <-deleteKwekChannel:
+			logger.Info("Received delete kwek request", "kwek", deleteKwek)
+		}
 	}
 }

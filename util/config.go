@@ -23,7 +23,7 @@ type PostgresConfig struct {
 	Database string `mapstructure:"POSTGRES_DB"`
 }
 
-func LoadConfig() (Config, error) {
+func LoadConfig() (*Config, error) {
 	config := Config{}
 	viper.SetConfigFile(".env")
 
@@ -31,10 +31,14 @@ func LoadConfig() (Config, error) {
 	err := viper.ReadInConfig()
 
 	if err != nil {
-		return config, err
+		return nil, err
 	}
 
 	err = viper.Unmarshal(&config)
 
-	return config, nil
+	if err != nil {
+		return &config, err
+	}
+
+	return &config, nil
 }

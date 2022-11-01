@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	kwekker_protobufs "github.com/googolplex-s6/kwekker-protobufs/kwek"
+	kwekker_protobufs "github.com/googolplex-s6/kwekker-protobufs/v2/kwek"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -10,18 +10,22 @@ import (
 )
 
 type RabbitMQWorker struct {
-	logger *zap.Logger
+	logger *zap.SugaredLogger
 	config *util.RabbitMQConfig
 }
 
-func NewRabbitMQWorker(logger *zap.Logger, config *util.RabbitMQConfig) *RabbitMQWorker {
+func NewRabbitMQWorker(logger *zap.SugaredLogger, config *util.RabbitMQConfig) *RabbitMQWorker {
 	return &RabbitMQWorker{
 		logger: logger,
 		config: config,
 	}
 }
 
-func (w *RabbitMQWorker) Listen(kwekChannel chan<- *kwekker_protobufs.Kwek) {
+func (w *RabbitMQWorker) Listen(
+	createKwekChannel chan<- *kwekker_protobufs.CreateKwek,
+	updateKwekChannel chan<- *kwekker_protobufs.UpdateKwek,
+	deleteKwekChannel chan<- *kwekker_protobufs.DeleteKwek,
+) {
 	conn, err := amqp.Dial(
 		fmt.Sprintf(
 			"amqp://%s:%s@%s:%d%s",
@@ -47,8 +51,16 @@ func (w *RabbitMQWorker) Listen(kwekChannel chan<- *kwekker_protobufs.Kwek) {
 
 	defer ch.Close()
 
+	go w.createKwekQueue(createKwekChannel, ch)
+	go w.updateKwekQueue(updateKwekChannel, ch)
+	go w.deleteKwekQueue(deleteKwekChannel, ch)
+
+	select {}
+}
+
+func (w *RabbitMQWorker) createKwekQueue(kwekChannel chan<- *kwekker_protobufs.CreateKwek, ch *amqp.Channel) {
 	q, err := ch.QueueDeclare(
-		"kweks",
+		"kwek.create",
 		true,
 		false,
 		false,
@@ -63,12 +75,16 @@ func (w *RabbitMQWorker) Listen(kwekChannel chan<- *kwekker_protobufs.Kwek) {
 	msgs, err := ch.Consume(
 		q.Name,
 		"",
-		true, // TODO: Ack manually later
+		false,
 		false,
 		false,
 		false,
 		nil,
 	)
+
+	if err != nil {
+		w.logger.Fatal("Failed to register consumer", zap.Error(err))
+	}
 
 	w.logger.Info("Listening for kweks...")
 
@@ -76,7 +92,7 @@ func (w *RabbitMQWorker) Listen(kwekChannel chan<- *kwekker_protobufs.Kwek) {
 		for d := range msgs {
 			w.logger.Debug("Received message")
 
-			kwek := &kwekker_protobufs.Kwek{}
+			kwek := &kwekker_protobufs.CreateKwek{}
 			err := proto.Unmarshal(d.Body, kwek)
 
 			if err != nil {
@@ -85,8 +101,124 @@ func (w *RabbitMQWorker) Listen(kwekChannel chan<- *kwekker_protobufs.Kwek) {
 			}
 
 			kwekChannel <- kwek
+
+			err = d.Ack(true)
+
+			if err != nil {
+				w.logger.Error("Failed to acknowledge message", zap.Error(err))
+			}
 		}
 	}()
 
-	select {} // TODO: Handle shutdown
+	select {}
+}
+
+func (w *RabbitMQWorker) updateKwekQueue(kwekChannel chan<- *kwekker_protobufs.UpdateKwek, ch *amqp.Channel) {
+	q, err := ch.QueueDeclare(
+		"kwek.update",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+
+	if err != nil {
+		w.logger.Fatal("Failed to declare queue", zap.Error(err))
+	}
+
+	msgs, err := ch.Consume(
+		q.Name,
+		"",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+
+	if err != nil {
+		w.logger.Fatal("Failed to register consumer", zap.Error(err))
+	}
+
+	w.logger.Info("Listening for kweks...")
+
+	go func() {
+		for d := range msgs {
+			w.logger.Debug("Received message")
+
+			kwek := &kwekker_protobufs.UpdateKwek{}
+			err := proto.Unmarshal(d.Body, kwek)
+
+			if err != nil {
+				w.logger.Error("Failed to unmarshal kwek", zap.Error(err))
+				continue
+			}
+
+			kwekChannel <- kwek
+
+			err = d.Ack(true)
+
+			if err != nil {
+				w.logger.Error("Failed to acknowledge message", zap.Error(err))
+			}
+		}
+	}()
+
+	select {}
+}
+
+func (w *RabbitMQWorker) deleteKwekQueue(kwekChannel chan<- *kwekker_protobufs.DeleteKwek, ch *amqp.Channel) {
+	q, err := ch.QueueDeclare(
+		"kwek.delete",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+
+	if err != nil {
+		w.logger.Fatal("Failed to declare queue", zap.Error(err))
+	}
+
+	msgs, err := ch.Consume(
+		q.Name,
+		"",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+
+	if err != nil {
+		w.logger.Fatal("Failed to register consumer", zap.Error(err))
+	}
+
+	w.logger.Info("Listening for kweks...")
+
+	go func() {
+		for d := range msgs {
+			w.logger.Debug("Received message")
+
+			kwek := &kwekker_protobufs.DeleteKwek{}
+			err := proto.Unmarshal(d.Body, kwek)
+
+			if err != nil {
+				w.logger.Error("Failed to unmarshal kwek", zap.Error(err))
+				continue
+			}
+
+			kwekChannel <- kwek
+
+			err = d.Ack(true)
+
+			if err != nil {
+				w.logger.Error("Failed to acknowledge message", zap.Error(err))
+			}
+		}
+	}()
+
+	select {}
 }

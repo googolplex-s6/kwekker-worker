@@ -6,8 +6,13 @@ import (
 )
 
 func main() {
-	logger, _ := zap.NewDevelopment()
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+
 	defer logger.Sync()
+
 	sugaredLogger := logger.Sugar()
 
 	config, err := util.LoadConfig()
@@ -15,5 +20,5 @@ func main() {
 		sugaredLogger.Fatalln("Unable to load configuration; is the .env file present and valid?", err)
 	}
 
-	Initialize(logger, &config)
+	Initialize(sugaredLogger, config)
 }

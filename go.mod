@@ -3,7 +3,7 @@ module kwekker-worker
 go 1.19
 
 require (
-	github.com/googolplex-s6/kwekker-protobufs/v2 v2.0.1
+	github.com/googolplex-s6/kwekker-protobufs/v2 v2.1.1
 	github.com/rabbitmq/amqp091-go v1.5.0
 	github.com/spf13/viper v1.13.0
 	go.uber.org/zap v1.23.0

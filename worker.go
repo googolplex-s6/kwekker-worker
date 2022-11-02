@@ -6,22 +6,34 @@ import (
 	"kwekker-worker/util"
 )
 
-func Initialize(logger *zap.SugaredLogger, config *util.Config) {
+type Worker struct {
+	logger *zap.SugaredLogger
+	config *util.Config
+}
+
+func NewWorker(logger *zap.SugaredLogger, config *util.Config) *Worker {
+	return &Worker{
+		logger: logger,
+		config: config,
+	}
+}
+
+func (w *Worker) Initialize() {
 	createKwekChannel := make(chan *kwekker_protobufs.CreateKwek)
 	updateKwekChannel := make(chan *kwekker_protobufs.UpdateKwek)
 	deleteKwekChannel := make(chan *kwekker_protobufs.DeleteKwek)
 
-	rabbitMQWorker := NewRabbitMQWorker(logger, &config.RabbitMQ)
+	rabbitMQWorker := NewRabbitMQWorker(w.logger, &w.config.RabbitMQ)
 	go rabbitMQWorker.Listen(createKwekChannel, updateKwekChannel, deleteKwekChannel)
 
 	for {
 		select {
 		case createKwek := <-createKwekChannel:
-			logger.Info("Received create kwek request", "kwek", createKwek)
+			w.logger.Debug("Received create kwek request", "kwek", createKwek)
 		case updateKwek := <-updateKwekChannel:
-			logger.Info("Received update kwek request", "kwek", updateKwek)
+			w.logger.Debug("Received update kwek request", "kwek", updateKwek)
 		case deleteKwek := <-deleteKwekChannel:
-			logger.Info("Received delete kwek request", "kwek", deleteKwek)
+			w.logger.Debug("Received delete kwek request", "kwek", deleteKwek)
 		}
 	}
 }

@@ -6,16 +6,14 @@ import (
 	"github.com/googolplex-s6/kwekker-protobufs/v2/kwek"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"kwekker-worker/util"
 	"log"
-	"math/rand"
 	"time"
 )
 
-func main() {
-	rand.Seed(time.Now().UnixNano())
+const kwekId = 80000
 
+func main() {
 	config, err := util.LoadConfig()
 	if err != nil {
 		log.Fatalln("Unable to load configuration; is the .env file present and valid?", err)
@@ -51,14 +49,12 @@ func main() {
 		log.Fatal("Failed to declare exchange", err)
 	}
 
-	go createKwekQueue(ch)
-
-	select {}
+	deleteKwek(ch)
 }
 
-func createKwekQueue(ch *amqp.Channel) {
+func deleteKwek(ch *amqp.Channel) {
 	q, err := ch.QueueDeclare(
-		"kwek.create",
+		"kwek.delete",
 		true,
 		false,
 		false,
@@ -66,7 +62,7 @@ func createKwekQueue(ch *amqp.Channel) {
 		nil,
 	)
 
-	err = ch.QueueBind(q.Name, "kwek.create", "kweks", false, nil)
+	err = ch.QueueBind(q.Name, "kwek.delete", "kweks", false, nil)
 	if err != nil {
 		log.Fatal("Failed to bind queue", err)
 	}
@@ -78,36 +74,30 @@ func createKwekQueue(ch *amqp.Channel) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	for {
-		newKwek := &kwek.CreateKwek{
-			Text:     "Foo bar",
-			UserId:   "12abc",
-			PostedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
-		}
-
-		body, err := proto.Marshal(newKwek)
-		if err != nil {
-			log.Fatal("Failed to marshal protobuf", err)
-		}
-
-		err = ch.PublishWithContext(ctx,
-			"kweks",
-			q.Name,
-			false,
-			false,
-			amqp.Publishing{
-				DeliveryMode: amqp.Persistent,
-				ContentType:  "application/protobuf",
-				Body:         body,
-			},
-		)
-
-		if err != nil {
-			log.Fatal("Failed to publish message", err)
-		}
-
-		log.Println("Published message")
-
-		time.Sleep(time.Duration(rand.Intn(5)) * time.Second)
+	newKwek := &kwek.DeleteKwek{
+		KwekId: kwekId,
 	}
+
+	body, err := proto.Marshal(newKwek)
+	if err != nil {
+		log.Fatal("Failed to marshal protobuf", err)
+	}
+
+	err = ch.PublishWithContext(ctx,
+		"kweks",
+		q.Name,
+		false,
+		false,
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "application/protobuf",
+			Body:         body,
+		},
+	)
+
+	if err != nil {
+		log.Fatal("Failed to publish message", err)
+	}
+
+	log.Println("Published message")
 }

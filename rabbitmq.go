@@ -11,10 +11,10 @@ import (
 
 type RabbitMQWorker struct {
 	logger *zap.SugaredLogger
-	config *util.RabbitMQConfig
+	config util.RabbitMQConfig
 }
 
-func NewRabbitMQWorker(logger *zap.SugaredLogger, config *util.RabbitMQConfig) *RabbitMQWorker {
+func NewRabbitMQWorker(logger *zap.SugaredLogger, config util.RabbitMQConfig) *RabbitMQWorker {
 	return &RabbitMQWorker{
 		logger: logger,
 		config: config,

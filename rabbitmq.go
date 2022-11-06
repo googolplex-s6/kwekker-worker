@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 	"kwekker-worker/util"
+	"time"
 )
 
 type RabbitMQWorker struct {
@@ -26,19 +27,31 @@ func (w *RabbitMQWorker) Listen(
 	updateKwekChannel chan<- *kwekker_protobufs.UpdateKwek,
 	deleteKwekChannel chan<- *kwekker_protobufs.DeleteKwek,
 ) {
-	conn, err := amqp.Dial(
-		fmt.Sprintf(
-			"amqp://%s:%s@%s:%d%s",
-			w.config.Username,
-			w.config.Password,
-			w.config.Host,
-			w.config.Port,
-			w.config.Vhost,
-		),
-	)
+	var conn *amqp.Connection
 
-	if err != nil {
-		w.logger.Fatal("Failed to connect to RabbitMQ", zap.Error(err))
+	for i := 0; i < 5; i++ {
+		var err error
+		conn, err = amqp.Dial(
+			fmt.Sprintf(
+				"amqp://%s:%s@%s:%d%s",
+				w.config.Username,
+				w.config.Password,
+				w.config.Host,
+				w.config.Port,
+				w.config.Vhost,
+			),
+		)
+
+		if err == nil {
+			break
+		}
+
+		w.logger.Debug("Retrying RabbitMQ connection", zap.Error(err))
+		time.Sleep(5 * time.Second)
+	}
+
+	if conn == nil {
+		w.logger.Fatal("Failed to connect to RabbitMQ")
 	}
 
 	defer conn.Close()

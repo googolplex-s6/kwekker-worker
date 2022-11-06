@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 	"kwekker-worker/util"
+	"time"
 )
 
 type DB struct {
@@ -23,20 +24,32 @@ func NewDB(logger *zap.SugaredLogger, config util.PostgresConfig) *DB {
 func (db *DB) Connect() *pgx.Conn {
 	db.logger.Debug("Connecting to DB")
 
-	conn, err := pgx.Connect(
-		context.Background(),
-		fmt.Sprintf(
-			"postgres://%s:%s@%s:%d/%s",
-			db.config.Username,
-			db.config.Password,
-			db.config.Host,
-			db.config.Port,
-			db.config.Database,
-		),
-	)
+	var conn *pgx.Conn
 
-	if err != nil {
-		db.logger.Fatal("Failed to connect to DB", zap.Error(err))
+	for i := 0; i < 5; i++ {
+		var err error
+		conn, err = pgx.Connect(
+			context.Background(),
+			fmt.Sprintf(
+				"postgres://%s:%s@%s:%d/%s",
+				db.config.Username,
+				db.config.Password,
+				db.config.Host,
+				db.config.Port,
+				db.config.Database,
+			),
+		)
+
+		if err == nil {
+			break
+		}
+
+		db.logger.Debug("Retrying database connection", "error", err)
+		time.Sleep(5 * time.Second)
+	}
+
+	if conn == nil {
+		db.logger.Fatal("Failed to connect to DB")
 	}
 
 	db.logger.Debug("Connected to DB")

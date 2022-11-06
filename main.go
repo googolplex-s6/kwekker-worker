@@ -20,5 +20,7 @@ func main() {
 		sugaredLogger.Fatalln("Unable to load configuration; is the .env file present and valid?", err)
 	}
 
-	Initialize(sugaredLogger, config)
+	worker := NewWorker(sugaredLogger, config)
+
+	worker.Initialize()
 }

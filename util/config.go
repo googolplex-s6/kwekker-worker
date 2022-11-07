@@ -1,6 +1,8 @@
 package util
 
-import "github.com/spf13/viper"
+import (
+	"github.com/spf13/viper"
+)
 
 type Config struct {
 	RabbitMQ RabbitMQConfig `mapstructure:",squash"`
@@ -25,19 +27,20 @@ type PostgresConfig struct {
 
 func LoadConfig() (*Config, error) {
 	config := Config{}
-	viper.SetConfigFile(".env")
+	viper.AddConfigPath(".")
+	viper.SetConfigName(".env")
+	viper.SetConfigType("env")
 
 	setDefaults()
 	viper.AutomaticEnv()
-	err := viper.ReadInConfig()
 
-	if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, err
 		}
 	}
 
-	err = viper.Unmarshal(&config)
+	err := viper.Unmarshal(&config)
 
 	if err != nil {
 		return &config, err
@@ -47,9 +50,15 @@ func LoadConfig() (*Config, error) {
 }
 
 func setDefaults() {
+	viper.SetDefault("RABBITMQ_USER", "")
+	viper.SetDefault("RABBITMQ_PASS", "")
 	viper.SetDefault("RABBITMQ_HOST", "localhost")
 	viper.SetDefault("RABBITMQ_PORT", 5672)
+	viper.SetDefault("RABBITMQ_VHOST", "/")
 
+	viper.SetDefault("POSTGRES_USER", "")
+	viper.SetDefault("POSTGRES_PASSWORD", "")
 	viper.SetDefault("POSTGRES_HOST", "localhost")
 	viper.SetDefault("POSTGRES_PORT", 5432)
+	viper.SetDefault("POSTGRES_DB", "")
 }

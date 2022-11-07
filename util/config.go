@@ -27,11 +27,14 @@ func LoadConfig() (*Config, error) {
 	config := Config{}
 	viper.SetConfigFile(".env")
 
+	setDefaults()
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()
 
 	if err != nil {
-		return nil, err
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return nil, err
+		}
 	}
 
 	err = viper.Unmarshal(&config)
@@ -41,4 +44,12 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return &config, nil
+}
+
+func setDefaults() {
+	viper.SetDefault("RABBITMQ_HOST", "localhost")
+	viper.SetDefault("RABBITMQ_PORT", 5672)
+
+	viper.SetDefault("POSTGRES_HOST", "localhost")
+	viper.SetDefault("POSTGRES_PORT", 5432)
 }

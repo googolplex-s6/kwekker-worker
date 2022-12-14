@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	kwekker_protobufs "github.com/googolplex-s6/kwekker-protobufs/v2/kwek"
+	kwekker_protobufs "github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 	"kwekker-worker/util"
@@ -53,11 +53,12 @@ func (w *Worker) handleCreateKwek(createKwek *kwekker_protobufs.CreateKwek) {
 
 	_, err := w.dbconn.Exec(
 		context.Background(),
-		`INSERT INTO "Kweks" ("UserId", "Text", "PostedAt")
-			 VALUES ((SELECT "Id" FROM "Users" WHERE "ProviderId" = $1), $2, $3)`,
-		createKwek.UserId,
-		createKwek.Text,
-		createKwek.PostedAt.AsTime(),
+		`INSERT INTO "Kweks" ("Guid", "UserId", "Text", "PostedAt")
+			 VALUES ($1, (SELECT "Id" FROM "Users" WHERE "ProviderId" = $2), $3, $4)`,
+		createKwek.GetKwekGuid(),
+		createKwek.GetUserId(),
+		createKwek.GetText(),
+		createKwek.GetPostedAt().AsTime(),
 	)
 
 	if err != nil {
@@ -73,9 +74,9 @@ func (w *Worker) handleUpdateKwek(updateKwek *kwekker_protobufs.UpdateKwek) {
 
 	_, err := w.dbconn.Exec(
 		context.Background(),
-		`UPDATE "Kweks" SET "Text" = $1 WHERE "Id" = $2`,
+		`UPDATE "Kweks" SET "Text" = $1 WHERE "Guid" = $2`,
 		updateKwek.GetText(),
-		updateKwek.GetKwekId(),
+		updateKwek.GetKwekGuid(),
 	)
 
 	if err != nil {
@@ -91,8 +92,8 @@ func (w *Worker) handleDeleteKwek(deleteKwek *kwekker_protobufs.DeleteKwek) {
 
 	_, err := w.dbconn.Exec(
 		context.Background(),
-		`DELETE FROM "Kweks" WHERE "Id" = $1`,
-		deleteKwek.GetKwekId(),
+		`DELETE FROM "Kweks" WHERE "Guid" = $1`,
+		deleteKwek.GetKwekGuid(),
 	)
 
 	if err != nil {

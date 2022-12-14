@@ -3,7 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/googolplex-s6/kwekker-protobufs/v2/kwek"
+	"github.com/google/uuid"
+	"github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -78,6 +79,7 @@ func createKwekQueue(ch *amqp.Channel) {
 
 	for {
 		newKwek := &kwek.CreateKwek{
+			KwekGuid: uuid.New().String(),
 			Text:     "Foo bar",
 			UserId:   "12abc",
 			PostedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},

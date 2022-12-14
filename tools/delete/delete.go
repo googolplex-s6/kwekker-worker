@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/googolplex-s6/kwekker-protobufs/v2/kwek"
+	"github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/protobuf/proto"
 	"kwekker-worker/util"
@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const kwekId = 80000
+const kwekGuid = "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc"
 
 func main() {
 	config, err := util.LoadConfig()
@@ -75,7 +75,7 @@ func deleteKwek(ch *amqp.Channel) {
 	defer cancel()
 
 	newKwek := &kwek.DeleteKwek{
-		KwekId: kwekId,
+		KwekGuid: kwekGuid,
 	}
 
 	body, err := proto.Marshal(newKwek)

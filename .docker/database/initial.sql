@@ -20,7 +20,6 @@ CREATE TABLE "Kweks" (
                          CONSTRAINT "FK_Kweks_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
 );
 
-CREATE INDEX "IX_Kweks_Guid" ON "Kweks" ("Guid");
 CREATE INDEX "IX_Kweks_UserId" ON "Kweks" ("UserId");
 
 COMMIT;

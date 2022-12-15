@@ -1,7 +1,7 @@
 package util
 
 import (
-	"github.com/googolplex-s6/kwekker-protobufs/v2/kwek"
+	"github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"strings"
 	"testing"
@@ -10,6 +10,7 @@ import (
 
 func TestValidateCreateKwekWithValidKwek(t *testing.T) {
 	createKwek := kwek.CreateKwek{
+		KwekGuid: "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:     "Hello world!",
 		UserId:   "123",
 		PostedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
@@ -26,8 +27,47 @@ func TestValidateCreateKwekWithValidKwek(t *testing.T) {
 	}
 }
 
+func TestValidateCreateKwekWithEmptyGuid(t *testing.T) {
+	createKwek := kwek.CreateKwek{
+		KwekGuid: "",
+		Text:     "Hello world!",
+		UserId:   "123",
+		PostedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
+	}
+
+	validation := ValidateCreateKwek(&createKwek)
+
+	if validation.Valid {
+		t.Errorf("Validation should be invalid, but is not")
+	}
+
+	if len(validation.Errors) != 1 {
+		t.Errorf("Validation should have one error, but has %d", len(validation.Errors))
+	}
+}
+
+func TestValidateCreateKwekWithInvalidGuid(t *testing.T) {
+	createKwek := kwek.CreateKwek{
+		KwekGuid: "invalid",
+		Text:     "Hello world!",
+		UserId:   "123",
+		PostedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
+	}
+
+	validation := ValidateCreateKwek(&createKwek)
+
+	if validation.Valid {
+		t.Errorf("Validation should be invalid, but is not")
+	}
+
+	if len(validation.Errors) != 1 {
+		t.Errorf("Validation should have one error, but has %d", len(validation.Errors))
+	}
+}
+
 func TestValidateCreateKwekWithEmptyText(t *testing.T) {
 	createKwek := kwek.CreateKwek{
+		KwekGuid: "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:     "",
 		UserId:   "123",
 		PostedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
@@ -46,6 +86,7 @@ func TestValidateCreateKwekWithEmptyText(t *testing.T) {
 
 func TestValidateCreateKwekWithTextWithMaxLength(t *testing.T) {
 	createKwek := kwek.CreateKwek{
+		KwekGuid: "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:     strings.Repeat("a", 256),
 		UserId:   "123",
 		PostedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
@@ -64,6 +105,7 @@ func TestValidateCreateKwekWithTextWithMaxLength(t *testing.T) {
 
 func TestValidateCreateKwekWithTooLongText(t *testing.T) {
 	createKwek := kwek.CreateKwek{
+		KwekGuid: "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:     strings.Repeat("a", 257),
 		UserId:   "123",
 		PostedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
@@ -82,6 +124,7 @@ func TestValidateCreateKwekWithTooLongText(t *testing.T) {
 
 func TestValidateCreateKwekWithEmptyUserId(t *testing.T) {
 	createKwek := kwek.CreateKwek{
+		KwekGuid: "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:     "Hello world!",
 		UserId:   "",
 		PostedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
@@ -100,6 +143,7 @@ func TestValidateCreateKwekWithEmptyUserId(t *testing.T) {
 
 func TestValidateCreateKwekWithEmptyPostedAt(t *testing.T) {
 	createKwek := kwek.CreateKwek{
+		KwekGuid: "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:     "Hello world!",
 		UserId:   "123",
 		PostedAt: nil,
@@ -118,6 +162,7 @@ func TestValidateCreateKwekWithEmptyPostedAt(t *testing.T) {
 
 func TestValidateCreateKwekWithPostedAtInFuture(t *testing.T) {
 	createKwek := kwek.CreateKwek{
+		KwekGuid: "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:     "Hello world!",
 		UserId:   "123",
 		PostedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix() + 100},
@@ -136,6 +181,7 @@ func TestValidateCreateKwekWithPostedAtInFuture(t *testing.T) {
 
 func TestValidateCreateKwekWithPostedAtInTooDistantPast(t *testing.T) {
 	createKwek := kwek.CreateKwek{
+		KwekGuid: "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:     "Hello world!",
 		UserId:   "123",
 		PostedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix() - 60*60*24*30},
@@ -154,6 +200,7 @@ func TestValidateCreateKwekWithPostedAtInTooDistantPast(t *testing.T) {
 
 func TestValidateCreateKwekWithPostedAtInDistantButAcceptablePast(t *testing.T) {
 	createKwek := kwek.CreateKwek{
+		KwekGuid: "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:     "Hello world!",
 		UserId:   "123",
 		PostedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix() - 60*60*24*29},
@@ -172,7 +219,7 @@ func TestValidateCreateKwekWithPostedAtInDistantButAcceptablePast(t *testing.T) 
 
 func TestValidateUpdateKwekWithValidKwek(t *testing.T) {
 	updateKwek := kwek.UpdateKwek{
-		KwekId:    1,
+		KwekGuid:  "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:      "Hello world!",
 		UpdatedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
 	}
@@ -188,9 +235,9 @@ func TestValidateUpdateKwekWithValidKwek(t *testing.T) {
 	}
 }
 
-func TestValidateUpdateKwekWithEmptyKwekId(t *testing.T) {
+func TestValidateUpdateKwekWithEmptyKwekGuid(t *testing.T) {
 	updateKwek := kwek.UpdateKwek{
-		KwekId:    0,
+		KwekGuid:  "",
 		Text:      "Hello world!",
 		UpdatedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
 	}
@@ -206,9 +253,9 @@ func TestValidateUpdateKwekWithEmptyKwekId(t *testing.T) {
 	}
 }
 
-func TestValidateUpdateKwekWithNegativeKwekId(t *testing.T) {
+func TestValidateUpdateKwekWithInvalidKwekGuid(t *testing.T) {
 	updateKwek := kwek.UpdateKwek{
-		KwekId:    -1,
+		KwekGuid:  "invalid",
 		Text:      "Hello world!",
 		UpdatedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
 	}
@@ -226,7 +273,7 @@ func TestValidateUpdateKwekWithNegativeKwekId(t *testing.T) {
 
 func TestValidateUpdateKwekWithEmptyText(t *testing.T) {
 	updateKwek := kwek.UpdateKwek{
-		KwekId:    1,
+		KwekGuid:  "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:      "",
 		UpdatedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
 	}
@@ -244,7 +291,7 @@ func TestValidateUpdateKwekWithEmptyText(t *testing.T) {
 
 func TestValidateUpdateKwekWithTextWithMaxLength(t *testing.T) {
 	updateKwek := kwek.UpdateKwek{
-		KwekId:    1,
+		KwekGuid:  "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:      strings.Repeat("a", 256),
 		UpdatedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
 	}
@@ -262,7 +309,7 @@ func TestValidateUpdateKwekWithTextWithMaxLength(t *testing.T) {
 
 func TestValidateUpdateKwekWithTooLongText(t *testing.T) {
 	updateKwek := kwek.UpdateKwek{
-		KwekId:    1,
+		KwekGuid:  "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:      strings.Repeat("a", 257),
 		UpdatedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
 	}
@@ -280,7 +327,7 @@ func TestValidateUpdateKwekWithTooLongText(t *testing.T) {
 
 func TestValidateUpdateKwekWithEmptyUpdatedAt(t *testing.T) {
 	updateKwek := kwek.UpdateKwek{
-		KwekId:    1,
+		KwekGuid:  "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:      "Hello world!",
 		UpdatedAt: nil,
 	}
@@ -298,7 +345,7 @@ func TestValidateUpdateKwekWithEmptyUpdatedAt(t *testing.T) {
 
 func TestValidateUpdateKwekWithUpdatedAtInFuture(t *testing.T) {
 	updateKwek := kwek.UpdateKwek{
-		KwekId:    1,
+		KwekGuid:  "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:      "Hello world!",
 		UpdatedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix() + 100},
 	}
@@ -316,7 +363,7 @@ func TestValidateUpdateKwekWithUpdatedAtInFuture(t *testing.T) {
 
 func TestValidateUpdateKwekWithUpdatedAtInTooDistantPast(t *testing.T) {
 	updateKwek := kwek.UpdateKwek{
-		KwekId:    1,
+		KwekGuid:  "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:      "Hello world!",
 		UpdatedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix() - 60*60*24*30},
 	}
@@ -334,7 +381,7 @@ func TestValidateUpdateKwekWithUpdatedAtInTooDistantPast(t *testing.T) {
 
 func TestValidateUpdateKwekWithUpdatedAtInDistantButAcceptablePast(t *testing.T) {
 	updateKwek := kwek.UpdateKwek{
-		KwekId:    1,
+		KwekGuid:  "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 		Text:      "Hello world!",
 		UpdatedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix() - 60*60*24*29},
 	}
@@ -352,7 +399,7 @@ func TestValidateUpdateKwekWithUpdatedAtInDistantButAcceptablePast(t *testing.T)
 
 func TestValidateDeleteKwekWithValidKwek(t *testing.T) {
 	deleteKwek := kwek.DeleteKwek{
-		KwekId: 123,
+		KwekGuid: "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc",
 	}
 
 	validation := ValidateDeleteKwek(&deleteKwek)
@@ -366,9 +413,9 @@ func TestValidateDeleteKwekWithValidKwek(t *testing.T) {
 	}
 }
 
-func TestValidateDeleteKwekWithEmptyKwekId(t *testing.T) {
+func TestValidateDeleteKwekWithEmptyKwekGuid(t *testing.T) {
 	deleteKwek := kwek.DeleteKwek{
-		KwekId: 0,
+		KwekGuid: "",
 	}
 
 	validation := ValidateDeleteKwek(&deleteKwek)
@@ -382,9 +429,9 @@ func TestValidateDeleteKwekWithEmptyKwekId(t *testing.T) {
 	}
 }
 
-func TestValidateDeleteKwekWithNegativeKwekId(t *testing.T) {
+func TestValidateDeleteKwekWithInvalidKwekGuid(t *testing.T) {
 	deleteKwek := kwek.DeleteKwek{
-		KwekId: -1,
+		KwekGuid: "invalid",
 	}
 
 	validation := ValidateDeleteKwek(&deleteKwek)

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	kwekker_protobufs "github.com/googolplex-s6/kwekker-protobufs/v2/kwek"
+	kwekker_protobufs "github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"

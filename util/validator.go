@@ -1,7 +1,7 @@
 package util
 
 import (
-	"github.com/googolplex-s6/kwekker-protobufs/v2/kwek"
+	"github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
@@ -16,6 +16,7 @@ func ValidateCreateKwek(kwek *kwek.CreateKwek) Validation {
 		Valid: true,
 	}
 
+	validateKwekGuid(kwek.GetKwekGuid(), &validation)
 	validateText(kwek.GetText(), &validation)
 	validateUserId(kwek.GetUserId(), &validation)
 	validatePostedAt(kwek.GetPostedAt(), &validation)
@@ -28,7 +29,7 @@ func ValidateUpdateKwek(kwek *kwek.UpdateKwek) Validation {
 		Valid: true,
 	}
 
-	validateKwekId(kwek.GetKwekId(), &validation)
+	validateKwekGuid(kwek.GetKwekGuid(), &validation)
 	validateText(kwek.GetText(), &validation)
 	validateUpdatedAt(kwek.GetUpdatedAt(), &validation)
 
@@ -40,7 +41,7 @@ func ValidateDeleteKwek(kwek *kwek.DeleteKwek) Validation {
 		Valid: true,
 	}
 
-	validateKwekId(kwek.GetKwekId(), &validation)
+	validateKwekGuid(kwek.GetKwekGuid(), &validation)
 
 	return validation
 }
@@ -111,15 +112,13 @@ func validateTimestamp(timestamp *timestamppb.Timestamp, v *Validation) {
 	}
 }
 
-func validateKwekId(id int64, v *Validation) {
-	if id == 0 {
+func validateKwekGuid(guid string, v *Validation) {
+	if guid == "" {
 		v.Valid = false
-		v.Errors = append(v.Errors, "KwekId is required")
-	}
-
-	if id < 0 {
+		v.Errors = append(v.Errors, "KwekGuid is required")
+	} else if len(guid) != 36 {
 		v.Valid = false
-		v.Errors = append(v.Errors, "KwekId cannot be negative")
+		v.Errors = append(v.Errors, "KwekGuid must be a valid GUID")
 	}
 }
 

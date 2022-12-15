@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/googolplex-s6/kwekker-protobufs/v2/kwek"
+	"github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const kwekId = 80000
+const kwekGuid = "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc"
 const kwekText = "Edited foo bar"
 
 func main() {
@@ -77,7 +77,7 @@ func updateKwekQueue(ch *amqp.Channel) {
 	defer cancel()
 
 	newKwek := &kwek.UpdateKwek{
-		KwekId:    kwekId,
+		KwekGuid:  kwekGuid,
 		Text:      kwekText,
 		UpdatedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
 	}

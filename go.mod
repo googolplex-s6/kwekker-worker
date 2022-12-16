@@ -8,7 +8,7 @@ require (
 	github.com/jackc/pgx/v5 v5.0.4
 	github.com/rabbitmq/amqp091-go v1.5.0
 	github.com/spf13/viper v1.13.0
-	go.uber.org/zap v1.23.0
+	go.uber.org/zap v1.24.0
 	google.golang.org/protobuf v1.28.1
 )
 

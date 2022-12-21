@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/google/uuid v1.3.0
 	github.com/googolplex-s6/kwekker-protobufs/v3 v3.0.0
-	github.com/jackc/pgx/v5 v5.0.4
+	github.com/jackc/pgx/v5 v5.2.0
 	github.com/rabbitmq/amqp091-go v1.5.0
 	github.com/spf13/viper v1.13.0
 	go.uber.org/zap v1.23.0

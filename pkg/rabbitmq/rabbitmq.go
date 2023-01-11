@@ -1,21 +1,22 @@
-package main
+package rabbitmq
 
 import (
 	"fmt"
-	kwekker_protobufs "github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
+	kwekkerprotobufs "github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
-	"kwekker-worker/util"
+	"kwekker-worker/pkg/config"
+	"kwekker-worker/pkg/validation"
 	"time"
 )
 
 type RabbitMQWorker struct {
 	logger *zap.SugaredLogger
-	config util.RabbitMQConfig
+	config config.RabbitMQConfig
 }
 
-func NewRabbitMQWorker(logger *zap.SugaredLogger, config util.RabbitMQConfig) *RabbitMQWorker {
+func NewRabbitMQWorker(logger *zap.SugaredLogger, config config.RabbitMQConfig) *RabbitMQWorker {
 	return &RabbitMQWorker{
 		logger: logger,
 		config: config,
@@ -23,9 +24,9 @@ func NewRabbitMQWorker(logger *zap.SugaredLogger, config util.RabbitMQConfig) *R
 }
 
 func (w *RabbitMQWorker) Listen(
-	createKwekChannel chan<- *kwekker_protobufs.CreateKwek,
-	updateKwekChannel chan<- *kwekker_protobufs.UpdateKwek,
-	deleteKwekChannel chan<- *kwekker_protobufs.DeleteKwek,
+	createKwekChannel chan<- *kwekkerprotobufs.CreateKwek,
+	updateKwekChannel chan<- *kwekkerprotobufs.UpdateKwek,
+	deleteKwekChannel chan<- *kwekkerprotobufs.DeleteKwek,
 ) {
 	var conn *amqp.Connection
 
@@ -71,7 +72,7 @@ func (w *RabbitMQWorker) Listen(
 	select {}
 }
 
-func (w *RabbitMQWorker) createKwekQueue(kwekChannel chan<- *kwekker_protobufs.CreateKwek, ch *amqp.Channel) {
+func (w *RabbitMQWorker) createKwekQueue(kwekChannel chan<- *kwekkerprotobufs.CreateKwek, ch *amqp.Channel) {
 	q, err := ch.QueueDeclare(
 		"kwek.create",
 		true,
@@ -111,7 +112,7 @@ func (w *RabbitMQWorker) createKwekQueue(kwekChannel chan<- *kwekker_protobufs.C
 	select {}
 }
 
-func (w *RabbitMQWorker) updateKwekQueue(kwekChannel chan<- *kwekker_protobufs.UpdateKwek, ch *amqp.Channel) {
+func (w *RabbitMQWorker) updateKwekQueue(kwekChannel chan<- *kwekkerprotobufs.UpdateKwek, ch *amqp.Channel) {
 	q, err := ch.QueueDeclare(
 		"kwek.update",
 		true,
@@ -151,7 +152,7 @@ func (w *RabbitMQWorker) updateKwekQueue(kwekChannel chan<- *kwekker_protobufs.U
 	select {}
 }
 
-func (w *RabbitMQWorker) deleteKwekQueue(kwekChannel chan<- *kwekker_protobufs.DeleteKwek, ch *amqp.Channel) {
+func (w *RabbitMQWorker) deleteKwekQueue(kwekChannel chan<- *kwekkerprotobufs.DeleteKwek, ch *amqp.Channel) {
 	q, err := ch.QueueDeclare(
 		"kwek.delete",
 		true,
@@ -191,8 +192,8 @@ func (w *RabbitMQWorker) deleteKwekQueue(kwekChannel chan<- *kwekker_protobufs.D
 	select {}
 }
 
-func (w *RabbitMQWorker) handleCreateKwekDelivery(d amqp.Delivery, c chan<- *kwekker_protobufs.CreateKwek) {
-	kwek := &kwekker_protobufs.CreateKwek{}
+func (w *RabbitMQWorker) handleCreateKwekDelivery(d amqp.Delivery, c chan<- *kwekkerprotobufs.CreateKwek) {
+	kwek := &kwekkerprotobufs.CreateKwek{}
 	err := proto.Unmarshal(d.Body, kwek)
 
 	if err != nil {
@@ -201,10 +202,10 @@ func (w *RabbitMQWorker) handleCreateKwekDelivery(d amqp.Delivery, c chan<- *kwe
 		return
 	}
 
-	validation := util.ValidateCreateKwek(kwek)
+	valid := validation.ValidateCreateKwek(kwek)
 
-	if !validation.Valid {
-		w.logger.Error("Failed to validate kwek", zap.Strings("errors", validation.Errors))
+	if !valid.Valid {
+		w.logger.Error("Failed to validate kwek", zap.Strings("errors", valid.Errors))
 		_ = d.Nack(false, false)
 		return
 	}
@@ -218,8 +219,8 @@ func (w *RabbitMQWorker) handleCreateKwekDelivery(d amqp.Delivery, c chan<- *kwe
 	}
 }
 
-func (w *RabbitMQWorker) handleUpdateKwekDelivery(d amqp.Delivery, c chan<- *kwekker_protobufs.UpdateKwek) {
-	kwek := &kwekker_protobufs.UpdateKwek{}
+func (w *RabbitMQWorker) handleUpdateKwekDelivery(d amqp.Delivery, c chan<- *kwekkerprotobufs.UpdateKwek) {
+	kwek := &kwekkerprotobufs.UpdateKwek{}
 	err := proto.Unmarshal(d.Body, kwek)
 
 	if err != nil {
@@ -228,10 +229,10 @@ func (w *RabbitMQWorker) handleUpdateKwekDelivery(d amqp.Delivery, c chan<- *kwe
 		return
 	}
 
-	validation := util.ValidateUpdateKwek(kwek)
+	valid := validation.ValidateUpdateKwek(kwek)
 
-	if !validation.Valid {
-		w.logger.Error("Failed to validate kwek", zap.Strings("errors", validation.Errors))
+	if !valid.Valid {
+		w.logger.Error("Failed to validate kwek", zap.Strings("errors", valid.Errors))
 		_ = d.Nack(false, false)
 		return
 	}
@@ -245,8 +246,8 @@ func (w *RabbitMQWorker) handleUpdateKwekDelivery(d amqp.Delivery, c chan<- *kwe
 	}
 }
 
-func (w *RabbitMQWorker) handleDeleteKwekDelivery(d amqp.Delivery, c chan<- *kwekker_protobufs.DeleteKwek) {
-	kwek := &kwekker_protobufs.DeleteKwek{}
+func (w *RabbitMQWorker) handleDeleteKwekDelivery(d amqp.Delivery, c chan<- *kwekkerprotobufs.DeleteKwek) {
+	kwek := &kwekkerprotobufs.DeleteKwek{}
 	err := proto.Unmarshal(d.Body, kwek)
 
 	if err != nil {
@@ -255,10 +256,10 @@ func (w *RabbitMQWorker) handleDeleteKwekDelivery(d amqp.Delivery, c chan<- *kwe
 		return
 	}
 
-	validation := util.ValidateDeleteKwek(kwek)
+	valid := validation.ValidateDeleteKwek(kwek)
 
-	if !validation.Valid {
-		w.logger.Error("Failed to validate kwek", zap.Strings("errors", validation.Errors))
+	if !valid.Valid {
+		w.logger.Error("Failed to validate kwek", zap.Strings("errors", valid.Errors))
 		_ = d.Nack(false, false)
 		return
 	}

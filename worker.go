@@ -2,19 +2,21 @@ package main
 
 import (
 	"context"
-	kwekker_protobufs "github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
+	kwekkerprotobufs "github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
-	"kwekker-worker/util"
+	"kwekker-worker/pkg/config"
+	database "kwekker-worker/pkg/db"
+	"kwekker-worker/pkg/rabbitmq"
 )
 
 type Worker struct {
 	logger *zap.SugaredLogger
-	config util.Config
+	config config.Config
 	dbconn *pgx.Conn
 }
 
-func NewWorker(logger *zap.SugaredLogger, config util.Config) *Worker {
+func NewWorker(logger *zap.SugaredLogger, config config.Config) *Worker {
 	return &Worker{
 		logger: logger,
 		config: config,
@@ -22,14 +24,14 @@ func NewWorker(logger *zap.SugaredLogger, config util.Config) *Worker {
 }
 
 func (w *Worker) Initialize() {
-	createKwekChannel := make(chan *kwekker_protobufs.CreateKwek)
-	updateKwekChannel := make(chan *kwekker_protobufs.UpdateKwek)
-	deleteKwekChannel := make(chan *kwekker_protobufs.DeleteKwek)
+	createKwekChannel := make(chan *kwekkerprotobufs.CreateKwek)
+	updateKwekChannel := make(chan *kwekkerprotobufs.UpdateKwek)
+	deleteKwekChannel := make(chan *kwekkerprotobufs.DeleteKwek)
 
-	rabbitMQWorker := NewRabbitMQWorker(w.logger, w.config.RabbitMQ)
+	rabbitMQWorker := rabbitmq.NewRabbitMQWorker(w.logger, w.config.RabbitMQ)
 	go rabbitMQWorker.Listen(createKwekChannel, updateKwekChannel, deleteKwekChannel)
 
-	db := NewDB(w.logger, w.config.Postgres)
+	db := database.NewDB(w.logger, w.config.Postgres)
 	w.dbconn = db.Connect()
 	defer w.dbconn.Close(context.Background())
 
@@ -48,7 +50,7 @@ func (w *Worker) Initialize() {
 	}
 }
 
-func (w *Worker) handleCreateKwek(createKwek *kwekker_protobufs.CreateKwek) {
+func (w *Worker) handleCreateKwek(createKwek *kwekkerprotobufs.CreateKwek) {
 	w.logger.Debug("Handling create kwek request", "kwek", createKwek)
 
 	_, err := w.dbconn.Exec(
@@ -69,7 +71,7 @@ func (w *Worker) handleCreateKwek(createKwek *kwekker_protobufs.CreateKwek) {
 	w.logger.Debug("Successfully inserted kwek into database")
 }
 
-func (w *Worker) handleUpdateKwek(updateKwek *kwekker_protobufs.UpdateKwek) {
+func (w *Worker) handleUpdateKwek(updateKwek *kwekkerprotobufs.UpdateKwek) {
 	w.logger.Debug("Handling update kwek request", "kwek", updateKwek)
 
 	_, err := w.dbconn.Exec(
@@ -87,7 +89,7 @@ func (w *Worker) handleUpdateKwek(updateKwek *kwekker_protobufs.UpdateKwek) {
 	w.logger.Debug("Successfully updated kwek into database")
 }
 
-func (w *Worker) handleDeleteKwek(deleteKwek *kwekker_protobufs.DeleteKwek) {
+func (w *Worker) handleDeleteKwek(deleteKwek *kwekkerprotobufs.DeleteKwek) {
 	w.logger.Debug("Handling delete kwek request", "kwek", deleteKwek)
 
 	_, err := w.dbconn.Exec(

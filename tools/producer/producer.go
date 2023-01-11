@@ -8,14 +8,14 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"kwekker-worker/util"
+	"kwekker-worker/pkg/config"
 	"log"
 	"math/rand"
 	"time"
 )
 
 func main() {
-	config, err := util.LoadConfig()
+	conf, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalln("Unable to load configuration; is the .env file present and valid?", err)
 	}
@@ -23,11 +23,11 @@ func main() {
 	conn, err := amqp.Dial(
 		fmt.Sprintf(
 			"amqp://%s:%s@%s:%d%s",
-			config.RabbitMQ.Username,
-			config.RabbitMQ.Password,
-			config.RabbitMQ.Host,
-			config.RabbitMQ.Port,
-			config.RabbitMQ.Vhost,
+			conf.RabbitMQ.Username,
+			conf.RabbitMQ.Password,
+			conf.RabbitMQ.Host,
+			conf.RabbitMQ.Port,
+			conf.RabbitMQ.Vhost,
 		),
 	)
 

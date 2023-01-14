@@ -45,7 +45,7 @@ func main() {
 
 	defer ch.Close()
 
-	err = ch.ExchangeDeclare("kweks", "topic", true, false, false, false, nil)
+	err = ch.ExchangeDeclare("kwek-exchange", "topic", true, false, false, false, nil)
 	if err != nil {
 		log.Fatal("Failed to declare exchange", err)
 	}
@@ -63,7 +63,7 @@ func createKwekQueue(ch *amqp.Channel) {
 		nil,
 	)
 
-	err = ch.QueueBind(q.Name, "kwek.create", "kweks", false, nil)
+	err = ch.QueueBind(q.Name, "kwek.create", "kwek-exchange", false, nil)
 	if err != nil {
 		log.Fatal("Failed to bind queue", err)
 	}
@@ -91,7 +91,7 @@ func createKwekQueue(ch *amqp.Channel) {
 		}
 
 		err = ch.PublishWithContext(ctx,
-			"kweks",
+			"kwek-exchange",
 			q.Name,
 			false,
 			false,

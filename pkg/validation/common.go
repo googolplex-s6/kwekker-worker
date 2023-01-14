@@ -2,6 +2,9 @@ package validation
 
 import (
 	"fmt"
+	"github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
+	"github.com/googolplex-s6/kwekker-protobufs/v3/user"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
@@ -9,6 +12,28 @@ import (
 type Validation struct {
 	Valid  bool
 	Errors []string
+}
+
+func Validate(message proto.Message) Validation {
+	switch message.(type) {
+	case *kwek.CreateKwek:
+		return ValidateCreateKwek(message.(*kwek.CreateKwek))
+	case *kwek.UpdateKwek:
+		return ValidateUpdateKwek(message.(*kwek.UpdateKwek))
+	case *kwek.DeleteKwek:
+		return ValidateDeleteKwek(message.(*kwek.DeleteKwek))
+	case *user.CreateUser:
+		return ValidateCreateUser(message.(*user.CreateUser))
+	case *user.UpdateUser:
+		return ValidateUpdateUser(message.(*user.UpdateUser))
+	case *user.DeleteUser:
+		return ValidateDeleteUser(message.(*user.DeleteUser))
+	default:
+		return Validation{
+			Valid:  false,
+			Errors: []string{"Unknown message type"},
+		}
+	}
 }
 
 func validateGuid(guid string, key string, v *Validation) {

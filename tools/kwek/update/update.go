@@ -6,12 +6,14 @@ import (
 	"github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"kwekker-worker/pkg/config"
 	"log"
 	"time"
 )
 
-const kwekGuid = "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc"
+const kwekGuid = "12230daf-29ee-47e0-b957-905e7731e12a"
+const kwekText = "Edited foo bar"
 
 func main() {
 	conf, err := config.LoadConfig()
@@ -44,17 +46,17 @@ func main() {
 
 	defer ch.Close()
 
-	err = ch.ExchangeDeclare("kweks", "topic", true, false, false, false, nil)
+	err = ch.ExchangeDeclare("kwek-exchange", "topic", true, false, false, false, nil)
 	if err != nil {
 		log.Fatal("Failed to declare exchange", err)
 	}
 
-	deleteKwek(ch)
+	updateKwekQueue(ch)
 }
 
-func deleteKwek(ch *amqp.Channel) {
+func updateKwekQueue(ch *amqp.Channel) {
 	q, err := ch.QueueDeclare(
-		"kwek.delete",
+		"kwek.update",
 		true,
 		false,
 		false,
@@ -62,7 +64,7 @@ func deleteKwek(ch *amqp.Channel) {
 		nil,
 	)
 
-	err = ch.QueueBind(q.Name, "kwek.delete", "kweks", false, nil)
+	err = ch.QueueBind(q.Name, "kwek.update", "kwek-exchange", false, nil)
 	if err != nil {
 		log.Fatal("Failed to bind queue", err)
 	}
@@ -74,8 +76,10 @@ func deleteKwek(ch *amqp.Channel) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	newKwek := &kwek.DeleteKwek{
-		KwekGuid: kwekGuid,
+	newKwek := &kwek.UpdateKwek{
+		KwekGuid:  kwekGuid,
+		Text:      kwekText,
+		UpdatedAt: &timestamppb.Timestamp{Seconds: time.Now().Unix()},
 	}
 
 	body, err := proto.Marshal(newKwek)
@@ -84,7 +88,7 @@ func deleteKwek(ch *amqp.Channel) {
 	}
 
 	err = ch.PublishWithContext(ctx,
-		"kweks",
+		"kwek-exchange",
 		q.Name,
 		false,
 		false,

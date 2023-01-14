@@ -3,6 +3,7 @@ package main
 import (
 	"go.uber.org/zap"
 	"kwekker-worker/pkg/config"
+	"kwekker-worker/pkg/worker"
 )
 
 func main() {
@@ -20,7 +21,6 @@ func main() {
 		sugaredLogger.Fatalln("Unable to load configuration; is the .env file present and valid?", err)
 	}
 
-	worker := NewWorker(sugaredLogger, *conf)
-
-	worker.Initialize()
+	w := worker.NewWorker(sugaredLogger, *conf)
+	w.Initialize()
 }

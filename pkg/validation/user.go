@@ -31,7 +31,7 @@ func ValidateUpdateUser(user *user.UpdateUser) Validation {
 	validateUpdatedAt(user.GetUpdatedAt(), &validation)
 
 	if user.GetUsername() != "" {
-		validateUsername(user.GetUserId(), &validation)
+		validateUsername(user.GetUsername(), &validation)
 	}
 
 	if user.GetEmail() != "" {
@@ -60,7 +60,9 @@ func ValidateDeleteUser(user *user.DeleteUser) Validation {
 }
 
 func validateUserId(userId string, v *Validation) {
-	validateGuid(userId, "UserId", v)
+	if !assertNotEmpty(userId, "UserId", v) {
+		return
+	}
 }
 
 func validateUsername(username string, v *Validation) {

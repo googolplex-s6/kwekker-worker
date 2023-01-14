@@ -2,7 +2,6 @@ package rabbitmq
 
 import (
 	"fmt"
-	kwekkerprotobufs "github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -23,11 +22,35 @@ func NewRabbitMQWorker(logger *zap.SugaredLogger, config config.RabbitMQConfig) 
 	}
 }
 
-func (w *RabbitMQWorker) Listen(
-	createKwekChannel chan<- *kwekkerprotobufs.CreateKwek,
-	updateKwekChannel chan<- *kwekkerprotobufs.UpdateKwek,
-	deleteKwekChannel chan<- *kwekkerprotobufs.DeleteKwek,
-) {
+func (w *RabbitMQWorker) ListenToQueues(queues config.Queues, protobufchan chan<- proto.Message) {
+	conn, err := w.connect()
+
+	if err != nil {
+		w.logger.Fatal("Failed to connect to RabbitMQ", zap.Error(err))
+	}
+
+	w.logger.Debug("Connected to RabbitMQ")
+
+	defer conn.Close()
+
+	mqchannel, err := conn.Channel()
+
+	if err != nil {
+		w.logger.Fatal("Failed to open channel", zap.Error(err))
+	}
+
+	defer mqchannel.Close()
+
+	exchanges := extractExchanges(queues)
+
+	w.declareExchanges(exchanges, mqchannel)
+	w.declareAndBindQueues(queues, mqchannel)
+	w.consumeQueues(queues, mqchannel, protobufchan)
+
+	select {}
+}
+
+func (w *RabbitMQWorker) connect() (*amqp.Connection, error) {
 	var conn *amqp.Connection
 
 	for i := 0; i < 5; i++ {
@@ -52,223 +75,120 @@ func (w *RabbitMQWorker) Listen(
 	}
 
 	if conn == nil {
-		w.logger.Fatal("Failed to connect to RabbitMQ")
+		return nil, fmt.Errorf("failed to connect to RabbitMQ")
 	}
 
-	defer conn.Close()
-
-	ch, err := conn.Channel()
-
-	if err != nil {
-		w.logger.Fatal("Failed to open channel", zap.Error(err))
-	}
-
-	defer ch.Close()
-
-	go w.createKwekQueue(createKwekChannel, ch)
-	go w.updateKwekQueue(updateKwekChannel, ch)
-	go w.deleteKwekQueue(deleteKwekChannel, ch)
-
-	select {}
+	return conn, nil
 }
 
-func (w *RabbitMQWorker) createKwekQueue(kwekChannel chan<- *kwekkerprotobufs.CreateKwek, ch *amqp.Channel) {
-	q, err := ch.QueueDeclare(
-		"kwek.create",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
+func extractExchanges(queues config.Queues) []string {
+	exchangeMap := make(map[string]bool)
 
-	if err != nil {
-		w.logger.Fatal("Failed to declare queue", zap.Error(err))
+	for _, queueData := range queues {
+		exchangeMap[queueData.Exchange] = true
 	}
 
-	msgs, err := ch.Consume(
-		q.Name,
-		"",
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
+	exchanges := make([]string, 0, len(exchangeMap))
 
-	if err != nil {
-		w.logger.Fatal("Failed to register consumer", zap.Error(err))
+	for exchange := range exchangeMap {
+		exchanges = append(exchanges, exchange)
 	}
 
-	w.logger.Info("Listening for kweks...")
+	return exchanges
+}
 
-	go func() {
-		for d := range msgs {
-			w.logger.Debug("Received message")
-			w.handleCreateKwekDelivery(d, kwekChannel)
+func (w *RabbitMQWorker) declareExchanges(exchanges []string, mqchannel *amqp.Channel) {
+	for _, exchange := range exchanges {
+		err := mqchannel.ExchangeDeclare(
+			exchange,
+			"topic",
+			true,
+			false,
+			false,
+			false,
+			nil,
+		)
+
+		if err != nil {
+			w.logger.Fatal("Failed to declare exchange", err)
 		}
-	}()
-
-	select {}
+	}
 }
 
-func (w *RabbitMQWorker) updateKwekQueue(kwekChannel chan<- *kwekkerprotobufs.UpdateKwek, ch *amqp.Channel) {
-	q, err := ch.QueueDeclare(
-		"kwek.update",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
+func (w *RabbitMQWorker) declareAndBindQueues(queues config.Queues, mqchannel *amqp.Channel) {
+	for queue, queueData := range queues {
+		_, err := mqchannel.QueueDeclare(
+			queue,
+			true,
+			false,
+			false,
+			false,
+			nil,
+		)
 
-	if err != nil {
-		w.logger.Fatal("Failed to declare queue", zap.Error(err))
-	}
-
-	msgs, err := ch.Consume(
-		q.Name,
-		"",
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-
-	if err != nil {
-		w.logger.Fatal("Failed to register consumer", zap.Error(err))
-	}
-
-	w.logger.Info("Listening for kweks...")
-
-	go func() {
-		for d := range msgs {
-			w.logger.Debug("Received message")
-			w.handleUpdateKwekDelivery(d, kwekChannel)
+		if err != nil {
+			w.logger.Fatal("Failed to declare queue", zap.Error(err))
 		}
-	}()
 
-	select {}
-}
+		err = mqchannel.QueueBind(
+			queue,
+			queue,
+			queueData.Exchange,
+			false,
+			nil,
+		)
 
-func (w *RabbitMQWorker) deleteKwekQueue(kwekChannel chan<- *kwekkerprotobufs.DeleteKwek, ch *amqp.Channel) {
-	q, err := ch.QueueDeclare(
-		"kwek.delete",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-
-	if err != nil {
-		w.logger.Fatal("Failed to declare queue", zap.Error(err))
-	}
-
-	msgs, err := ch.Consume(
-		q.Name,
-		"",
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-
-	if err != nil {
-		w.logger.Fatal("Failed to register consumer", zap.Error(err))
-	}
-
-	w.logger.Info("Listening for kweks...")
-
-	go func() {
-		for d := range msgs {
-			w.logger.Debug("Received message")
-			w.handleDeleteKwekDelivery(d, kwekChannel)
+		if err != nil {
+			w.logger.Fatal("Failed to bind queue", zap.Error(err))
 		}
-	}()
-
-	select {}
-}
-
-func (w *RabbitMQWorker) handleCreateKwekDelivery(d amqp.Delivery, c chan<- *kwekkerprotobufs.CreateKwek) {
-	kwek := &kwekkerprotobufs.CreateKwek{}
-	err := proto.Unmarshal(d.Body, kwek)
-
-	if err != nil {
-		w.logger.Error("Failed to unmarshal kwek", zap.Error(err))
-		_ = d.Nack(false, false)
-		return
-	}
-
-	valid := validation.ValidateCreateKwek(kwek)
-
-	if !valid.Valid {
-		w.logger.Error("Failed to validate kwek", zap.Strings("errors", valid.Errors))
-		_ = d.Nack(false, false)
-		return
-	}
-
-	c <- kwek
-
-	err = d.Ack(true)
-
-	if err != nil {
-		w.logger.Error("Failed to acknowledge message", zap.Error(err))
 	}
 }
 
-func (w *RabbitMQWorker) handleUpdateKwekDelivery(d amqp.Delivery, c chan<- *kwekkerprotobufs.UpdateKwek) {
-	kwek := &kwekkerprotobufs.UpdateKwek{}
-	err := proto.Unmarshal(d.Body, kwek)
+func (w *RabbitMQWorker) consumeQueues(queues config.Queues, mqchannel *amqp.Channel, protobufchan chan<- proto.Message) {
+	for queue, queueData := range queues {
+		msgs, err := mqchannel.Consume(
+			queue,
+			"",
+			false,
+			false,
+			false,
+			false,
+			nil,
+		)
 
-	if err != nil {
-		w.logger.Error("Failed to unmarshal kwek", zap.Error(err))
-		_ = d.Nack(false, false)
-		return
-	}
+		if err != nil {
+			w.logger.Fatal("Failed to consume queue", zap.Error(err))
+		}
 
-	valid := validation.ValidateUpdateKwek(kwek)
-
-	if !valid.Valid {
-		w.logger.Error("Failed to validate kwek", zap.Strings("errors", valid.Errors))
-		_ = d.Nack(false, false)
-		return
-	}
-
-	c <- kwek
-
-	err = d.Ack(true)
-
-	if err != nil {
-		w.logger.Error("Failed to acknowledge message", zap.Error(err))
+		go w.handleMessages(msgs, queueData.Type, protobufchan)
 	}
 }
 
-func (w *RabbitMQWorker) handleDeleteKwekDelivery(d amqp.Delivery, c chan<- *kwekkerprotobufs.DeleteKwek) {
-	kwek := &kwekkerprotobufs.DeleteKwek{}
-	err := proto.Unmarshal(d.Body, kwek)
+func (w *RabbitMQWorker) handleMessages(msgs <-chan amqp.Delivery, prototype proto.Message, protobufchan chan<- proto.Message) {
+	for msg := range msgs {
+		protobuf := proto.Clone(prototype)
+		err := proto.Unmarshal(msg.Body, protobuf)
 
-	if err != nil {
-		w.logger.Error("Failed to unmarshal kwek", zap.Error(err))
-		_ = d.Nack(false, false)
-		return
-	}
+		if err != nil {
+			w.logger.Error("Failed to unmarshal protobuf", zap.Error(err))
+			_ = msg.Nack(false, false)
+			continue
+		}
 
-	valid := validation.ValidateDeleteKwek(kwek)
+		valid := validation.Validate(protobuf)
 
-	if !valid.Valid {
-		w.logger.Error("Failed to validate kwek", zap.Strings("errors", valid.Errors))
-		_ = d.Nack(false, false)
-		return
-	}
+		if !valid.Valid {
+			w.logger.Error("Failed to validate protobuf", zap.Strings("errors", valid.Errors))
+			_ = msg.Nack(false, false)
+			continue
+		}
 
-	c <- kwek
+		protobufchan <- protobuf
 
-	err = d.Ack(true)
+		err = msg.Ack(true)
 
-	if err != nil {
-		w.logger.Error("Failed to acknowledge message", zap.Error(err))
+		if err != nil {
+			w.logger.Error("Failed to acknowledge message", zap.Error(err))
+		}
 	}
 }

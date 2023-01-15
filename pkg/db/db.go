@@ -1,20 +1,20 @@
-package main
+package db
 
 import (
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
-	"kwekker-worker/util"
+	"kwekker-worker/pkg/config"
 	"time"
 )
 
 type DB struct {
 	logger *zap.SugaredLogger
-	config util.PostgresConfig
+	config config.PostgresConfig
 }
 
-func NewDB(logger *zap.SugaredLogger, config util.PostgresConfig) *DB {
+func NewDB(logger *zap.SugaredLogger, config config.PostgresConfig) *DB {
 	return &DB{
 		logger: logger,
 		config: config,

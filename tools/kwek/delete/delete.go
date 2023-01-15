@@ -6,15 +6,15 @@ import (
 	"github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/protobuf/proto"
-	"kwekker-worker/util"
+	"kwekker-worker/pkg/config"
 	"log"
 	"time"
 )
 
-const kwekGuid = "f9d30d37-63a8-44a9-b2c3-3a45eb0701bc"
+const kwekGuid = "12230daf-29ee-47e0-b957-905e7731e12a"
 
 func main() {
-	config, err := util.LoadConfig()
+	conf, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalln("Unable to load configuration; is the .env file present and valid?", err)
 	}
@@ -22,11 +22,11 @@ func main() {
 	conn, err := amqp.Dial(
 		fmt.Sprintf(
 			"amqp://%s:%s@%s:%d%s",
-			config.RabbitMQ.Username,
-			config.RabbitMQ.Password,
-			config.RabbitMQ.Host,
-			config.RabbitMQ.Port,
-			config.RabbitMQ.Vhost,
+			conf.RabbitMQ.Username,
+			conf.RabbitMQ.Password,
+			conf.RabbitMQ.Host,
+			conf.RabbitMQ.Port,
+			conf.RabbitMQ.Vhost,
 		),
 	)
 
@@ -44,7 +44,7 @@ func main() {
 
 	defer ch.Close()
 
-	err = ch.ExchangeDeclare("kweks", "topic", true, false, false, false, nil)
+	err = ch.ExchangeDeclare("kwek-exchange", "topic", true, false, false, false, nil)
 	if err != nil {
 		log.Fatal("Failed to declare exchange", err)
 	}
@@ -62,7 +62,7 @@ func deleteKwek(ch *amqp.Channel) {
 		nil,
 	)
 
-	err = ch.QueueBind(q.Name, "kwek.delete", "kweks", false, nil)
+	err = ch.QueueBind(q.Name, "kwek.delete", "kwek-exchange", false, nil)
 	if err != nil {
 		log.Fatal("Failed to bind queue", err)
 	}
@@ -84,7 +84,7 @@ func deleteKwek(ch *amqp.Channel) {
 	}
 
 	err = ch.PublishWithContext(ctx,
-		"kweks",
+		"kwek-exchange",
 		q.Name,
 		false,
 		false,

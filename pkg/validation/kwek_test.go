@@ -1,4 +1,4 @@
-package util
+package validation
 
 import (
 	"github.com/googolplex-s6/kwekker-protobufs/v3/kwek"
